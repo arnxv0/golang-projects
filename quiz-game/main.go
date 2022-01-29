@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
 	csvFileName := flag.String("csv", "problems.csv", "a csv file in the format of 'question,answer'")
+	timeLimit := flag.Int("limit", 100, "the time limit for the quiz in seconds")
 	flag.Parse()
 
 	file, err := os.Open(*csvFileName)
@@ -24,18 +26,35 @@ func main() {
 	}
 
 	problems := parseLines(lines)
+
+	timer := time.NewTimer(time.Duration(*timeLimit) * time.Second)
+	// <-timer.C
+
 	score := 0
 	for i, p := range problems {
 		fmt.Printf("Problem #%d: %s = \n", i+1, p.question)
-		var answer string
-		fmt.Scanf("%s\n", &answer)
 
-		if answer == p.answer {
-			fmt.Printf("Correct!\n\n")
-			score++
-		} else {
-			fmt.Printf("Wrong! The answer is %s\n\n", p.answer)
+		answerCh := make(chan string)
+		go func() {
+			var answer string
+			fmt.Scanf("%s\n", &answer)
+			answerCh <- answer
+
+		}()
+
+		select {
+		case <-timer.C:
+			fmt.Printf("Oops, Time up! You scored %d out of %d.\n", score, len(problems))
+			return
+		case answer := <-answerCh:
+			if answer == p.answer {
+				fmt.Printf("Correct!\n\n")
+				score++
+			} else {
+				fmt.Printf("Wrong! The answer is %s\n\n", p.answer)
+			}
 		}
+
 	}
 
 	fmt.Printf("You scored %d out of %d.\n", score, len(problems))
