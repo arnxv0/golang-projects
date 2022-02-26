@@ -5,16 +5,18 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 
 	"github.com/arnxv0/golang-projects/cyoa"
 )
 
 func main() {
-	file := flag.String("file", "gopher.json", "The JSON file with the CYOA story")
+	port := flag.Int("port", 3000, "port to start web server on")
+	file := flag.String("file", "gopher.json", "the JSON file with the CYOA story")
 	flag.Parse()
 	fmt.Printf("Using the story in '%s'.\n", *file)
 
@@ -23,11 +25,15 @@ func main() {
 		panic(err)
 	}
 
-	var story cyoa.Story
-	fileJSON := json.NewDecoder(fileReader)
-	if err := fileJSON.Decode(&story); err != nil {
+	story, err := cyoa.JsonStory(fileReader)
+
+	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("%+v\n", story)
+	// fmt.Printf("%+v\n", story) // %+v prints the struct as a string
+
+	h := cyoa.NewHandler(story)
+	fmt.Printf("Starting the server on port: %d\n", *port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), h))
 }
